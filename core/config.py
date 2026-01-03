@@ -27,8 +27,14 @@ MOCK_LON = 23.361574
 # Polling intervals in seconds for the main async loops
 MAVLINK_RECV_LOOP_SLEEP = 0.01
 MAVLINK_SEND_LOOP_SLEEP = 0.1
+MAVLINK_MONITOR_LOOP_SLEEP = 1.0
 GPS_LOOP_SLEEP = 5.0
+VIDEO_MANAGER_LOOP_SLEEP = 0.25
 ERROR_LOOP_SLEEP = 1.0 # Sleep duration after an error in a component loop
 
 # -- Logging Settings
 LOG_LEVEL = "INFO" # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+# -- Video Service Settings
+VIDEO_SERVICE_NAME = "crawler-video.service"
+GCS_HEARTBEAT_TIMEOUT = 5.0 # Seconds before GCS is considered disconnected

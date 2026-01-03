@@ -15,11 +15,12 @@ class MAVLinkInterface:
     Dispatches events to and from other components via async queues.
     """
 
-    def __init__(self, config, manual_control_queue: asyncio.Queue, gps_queue: asyncio.Queue, shutdown_event: asyncio.Event):
+    def __init__(self, config, manual_control_queue: asyncio.Queue, gps_queue: asyncio.Queue, shutdown_event: asyncio.Event, heartbeat_queue: asyncio.Queue):
         self._config = config
         self._manual_control_queue = manual_control_queue
         self._gps_queue = gps_queue
         self._shutdown_event = shutdown_event
+        self._heartbeat_queue = heartbeat_queue
         self._task = None
         self._boot_time = time.time()
 
@@ -52,6 +53,10 @@ class MAVLinkInterface:
                 if msg: # Only process if a message was actually received
                     msg_type = msg.get_type()
 
+                    # If we receive a heartbeat from the GCS, forward it to the video manager
+                    if msg_type == 'HEARTBEAT' and msg.get_srcSystem() != self._config.MAVLINK_SOURCE_SYSTEM:
+                        await self._heartbeat_queue.put(msg)
+
                     if msg_type == 'MANUAL_CONTROL':
                         await self._manual_control_queue.put(msg)
 
@@ -79,7 +84,7 @@ class MAVLinkInterface:
                         param_id_bytes = msg.param_id.strip(b'\x00')
                         if param_id_bytes in self._params_bytes:
                             self._send_param(param_id_bytes.decode('utf-8'))
-                
+
                 await asyncio.sleep(self._config.MAVLINK_RECV_LOOP_SLEEP)
             except Exception:
                 logger.exception("Error in MAVLink receive loop:")

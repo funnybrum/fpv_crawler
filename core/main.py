@@ -8,6 +8,7 @@ from . import config
 from .crawler import Crawler
 from .mavlink import MAVLinkInterface
 from .gps import GPS
+from .video_manager import VideoStreamManager
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -32,9 +33,11 @@ async def main():
     # --- Create Queues and Components ---
     manual_control_queue = asyncio.Queue()
     gps_queue = asyncio.Queue()
+    heartbeat_queue = asyncio.Queue()
 
-    # Pass the shared shutdown_event to the MAVLink interface
-    mavlink_interface = MAVLinkInterface(config, manual_control_queue, gps_queue, shutdown_event)
+    # Instantiate the components
+    video_manager = VideoStreamManager(config, heartbeat_queue)
+    mavlink_interface = MAVLinkInterface(config, manual_control_queue, gps_queue, shutdown_event, heartbeat_queue)
     crawler = Crawler(config, manual_control_queue)
     gps = GPS(config, gps_queue)
 
@@ -43,7 +46,8 @@ async def main():
     tasks = [
         mavlink_interface.start(),
         crawler.start(),
-        gps.start()
+        gps.start(),
+        video_manager.start()
     ]
 
     # Wait until a shutdown signal is received
@@ -54,11 +58,12 @@ async def main():
     # Gracefully cancel all running tasks
     for task in tasks:
         task.cancel()
-    
+
     # Wait for all tasks to acknowledge cancellation
     await asyncio.gather(*tasks, return_exceptions=True)
 
     # Perform final cleanup
+    await video_manager.close()
     crawler.close()
     mavlink_interface.close()
     logger.info("Application has shut down gracefully.")

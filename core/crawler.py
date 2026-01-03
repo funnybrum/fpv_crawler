@@ -53,7 +53,7 @@ class Crawler:
                 logger.exception("Error in Crawler loop:")
                 # Avoid rapid-fire errors in case of a persistent issue
                 await asyncio.sleep(self._config.ERROR_LOOP_SLEEP)
-        
+
         logger.info("Crawler hardware controller stopped.")
 
     def start(self):
