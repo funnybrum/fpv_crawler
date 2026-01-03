@@ -49,7 +49,7 @@ try:
             buttons = msg.buttons  # Bitmask of any buttons pressed
 
             # Print to console (using \r to keep the screen clean)
-            print(f"MT12 -> Steering: {steering:>5} | Throttle: {throttle:>5} | BTN: {buttons}", end="\r")
+            print(f"MT12 -> Steering: {steering:>5} | Throttle: {throttle:>5} | BTN: {buttons}")
 
         # High frequency loop for snappy controls
         time.sleep(1)
