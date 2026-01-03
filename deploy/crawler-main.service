@@ -9,7 +9,7 @@ Type=simple
 # Set the working directory to your repo root
 WorkingDirectory=%h/fpv_crawler
 # Start the Python script using the python binary inside the venv
-ExecStart=%h/fpv_crawler/.venv/bin/python core/main.py
+ExecStart=%h/fpv_crawler/.venv/bin/python -m core.main
 Environment=PYTHONUNBUFFERED=1
 
 # Restart logic: If the script crashes, wait 5s and try again
