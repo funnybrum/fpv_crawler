@@ -14,6 +14,8 @@ connection = mavutil.mavlink_connection(
 # Mock location
 LAT, LON = 42.645953, 23.361574
 
+print("Starting the main process...")
+
 try:
     last_telemetry_time = 0
     while True:
