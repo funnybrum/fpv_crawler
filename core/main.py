@@ -50,7 +50,7 @@ try:
             print(f"MT12 -> Steering: {steering:>5} | Throttle: {throttle:>5} | BTN: {buttons}", end="\r")
 
         # High frequency loop for snappy controls
-        time.sleep(0.01)
+        time.sleep(1)
 
 except KeyboardInterrupt:
     print("\nShutting down receiver...")

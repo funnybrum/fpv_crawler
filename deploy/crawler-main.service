@@ -7,17 +7,17 @@ Wants=network-online.target
 [Service]
 Type=simple
 # Set the working directory to your repo root
-WorkingDirectory=%h/crawler-fpv-stack
+WorkingDirectory=%h/fpv_crawler
 # Start the Python script using the python binary inside the venv
-ExecStart=%h/crawler-fpv-stack/.venv/bin/python core/main.py
+ExecStart=%h/fpv_crawler/.venv/bin/python core/main.py
 
 # Restart logic: If the script crashes, wait 5s and try again
 Restart=always
 RestartSec=5s
 
 # Logging configuration
-StandardOutput=append:%h/crawler-fpv-stack/service-logs.log
-StandardError=append:%h/crawler-fpv-stack/service-logs.log
+StandardOutput=append:%h/fpv_crawler/service-logs.log
+StandardError=append:%h/fpv_crawler/service-logs.log
 
 [Install]
 # This one DOES start on boot
