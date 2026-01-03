@@ -1,0 +1,24 @@
+[Unit]
+Description=Crawler Main Logic Service
+# Ensure we have network and the user manager is ready
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Set the working directory to your repo root
+WorkingDirectory=%h/crawler-fpv-stack
+# Start the Python script using the python binary inside the venv
+ExecStart=%h/crawler-fpv-stack/.venv/bin/python core/main.py
+
+# Restart logic: If the script crashes, wait 5s and try again
+Restart=always
+RestartSec=5s
+
+# Logging configuration
+StandardOutput=append:%h/crawler-fpv-stack/service-logs.log
+StandardError=append:%h/crawler-fpv-stack/service-logs.log
+
+[Install]
+# This one DOES start on boot
+WantedBy=default.target
