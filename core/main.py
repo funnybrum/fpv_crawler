@@ -39,7 +39,11 @@ try:
 
         # 3. Poll for Controller Input (MANUAL_CONTROL)
         # blocking=False ensures we don't hang if no input is sent
-        msg = connection.recv_match(type='MANUAL_CONTROL', blocking=False)
+
+        # For testing purposes - purge all unused messages.
+        msg = None
+        while (m := connection.recv_match(type='MANUAL_CONTROL', blocking=False)) is not None:
+            msg = m
 
         if msg:
             # x = Throttle (Trigger), y = Steering (Wheel)
