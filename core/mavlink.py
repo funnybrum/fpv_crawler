@@ -23,6 +23,13 @@ class MAVLinkInterface:
         self._task = None
         self._boot_time = time.time()
 
+        # --- Parameter Store ---
+        self._params = {
+            "SYSID_THISMAV": float(config.MAVLINK_SOURCE_SYSTEM),
+        }
+        # Convert param names to bytes for efficient comparison
+        self._params_bytes = {k.encode('utf-8'): v for k, v in self._params.items()}
+
         connection_string = f'udpout:{self._config.GROUND_CONTROL_STATION_IP}:{self._config.MAVLINK_PORT}'
         logger.info(f"Opening MAVLink connection to {connection_string}...")
         self._connection = mavutil.mavlink_connection(
@@ -44,12 +51,34 @@ class MAVLinkInterface:
 
                 if msg: # Only process if a message was actually received
                     msg_type = msg.get_type()
+
                     if msg_type == 'MANUAL_CONTROL':
                         await self._manual_control_queue.put(msg)
 
                     elif msg_type == 'COMMAND_LONG' and msg.command == mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN:
                         logger.warning("Shutdown command received from GCS.")
                         self._shutdown_event.set()
+
+                    # --- Handle Parameter Protocol ---
+                    elif msg_type == 'PARAM_REQUEST_LIST':
+                        # GCS has requested the full parameter list
+                        asyncio.create_task(self._send_all_params())
+
+                    elif msg_type == 'PARAM_SET':
+                        # GCS is setting a parameter value
+                        param_id_bytes = msg.param_id.strip(b'\x00')
+                        if param_id_bytes in self._params_bytes:
+                            param_id = param_id_bytes.decode('utf-8')
+                            self._params[param_id] = msg.param_value
+                            logger.info(f"Set param {param_id} to {msg.param_value}")
+                            # Respond with the updated parameter value to confirm
+                            self._send_param(param_id)
+
+                    elif msg_type == 'PARAM_REQUEST_READ':
+                        # GCS is requesting a single parameter
+                        param_id_bytes = msg.param_id.strip(b'\x00')
+                        if param_id_bytes in self._params_bytes:
+                            self._send_param(param_id_bytes.decode('utf-8'))
                 
                 await asyncio.sleep(self._config.MAVLINK_RECV_LOOP_SLEEP)
             except Exception:
@@ -68,7 +97,6 @@ class MAVLinkInterface:
                         mavutil.mavlink.MAV_AUTOPILOT_GENERIC,
                         mavutil.mavlink.MAV_MODE_FLAG_MANUAL_INPUT_ENABLED, 0, 0)
                     last_heartbeat_time = time.time()
-                    logger.info("Hearbeat sent")
 
                 # Check for and process GPS data from the queue
                 try:
@@ -86,6 +114,30 @@ class MAVLinkInterface:
             except Exception:
                 logger.exception("Error in MAVLink send loop:")
                 await asyncio.sleep(self._config.ERROR_LOOP_SLEEP)
+
+    def _send_param(self, param_name):
+        """Sends a single parameter value to the GCS."""
+        if param_name in self._params:
+            param_value = self._params[param_name]
+            param_name_bytes = param_name.encode('utf-8')
+            param_count = len(self._params)
+            param_index = list(self._params.keys()).index(param_name)
+
+            self._connection.mav.param_value_send(
+                param_name_bytes,
+                param_value,
+                mavutil.mavlink.MAV_PARAM_TYPE_REAL32,
+                param_count,
+                param_index
+            )
+            logger.debug(f"Sent param {param_name} ({param_index}/{param_count}) = {param_value}")
+
+    async def _send_all_params(self):
+        """Sends all parameters to the GCS, with a small delay between each."""
+        logger.info(f"Sending all {len(self._params)} parameters to GCS.")
+        for param_name in self._params:
+            self._send_param(param_name)
+            await asyncio.sleep(0.02) # Short delay to prevent flooding
 
     async def run(self):
         """The main async loop for the MAVLink interface."""
