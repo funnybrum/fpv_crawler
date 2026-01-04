@@ -1,5 +1,5 @@
 """
-Handles all MAVLink communication, acting as a central hub.
+Han dles all MAVLink communication, acting as a central hub.
 """
 import asyncio
 import time
@@ -26,10 +26,21 @@ class MAVLinkInterface:
 
         # --- Parameter Store ---
         self._params = {
+            # Dynamically set from config to ensure consistency
             "SYSID_THISMAV": float(config.MAVLINK_SOURCE_SYSTEM),
         }
         # Convert param names to bytes for efficient comparison
         self._params_bytes = {k.encode('utf-8'): v for k, v in self._params.items()}
+
+        # --- Message Handler Dispatch Table ---
+        self._message_handlers = {
+            'HEARTBEAT': self._handle_heartbeat,
+            'MANUAL_CONTROL': self._handle_manual_control,
+            'COMMAND_LONG': self._handle_command_long,
+            'PARAM_REQUEST_LIST': self._handle_param_request_list,
+            'PARAM_SET': self._handle_param_set,
+            'PARAM_REQUEST_READ': self._handle_param_request_read,
+        }
 
         connection_string = f'udpout:{self._config.GROUND_CONTROL_STATION_IP}:{self._config.MAVLINK_PORT}'
         logger.info(f"Opening MAVLink connection to {connection_string}...")
@@ -43,48 +54,66 @@ class MAVLinkInterface:
     def _get_time_boot_ms(self):
         return int((time.time() - self._boot_time) * 1000)
 
+    async def _handle_heartbeat(self, msg):
+        # If we receive a heartbeat from the GCS, forward it to the video manager
+        if msg.get_srcSystem != self._config.MAVLINK_SOURCE_SYSTEM:
+            await self._heartbeat_queue.put("gcs_heartbeat")
+
+    async def _handle_manual_control(self, msg):
+        await self._manual_control_queue.put(msg)
+
+    def _handle_command_long(self, msg):
+        if msg.command == mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN:
+            logger.warning("Shutdown command received from GCS.")
+            self._shutdown_event.set()
+
+    def _handle_param_request_list(self, msg):
+        # GCS has requested the full parameter list
+        asyncio.create_task(self._send_all_params())
+
+    def _handle_param_set(self, msg):
+        # GCS is setting a parameter value
+        param_id_bytes = msg.param_id.strip(b'\x00')
+        if param_id_bytes in self._params_bytes:
+            param_id = param_id_bytes.decode('utf-8')
+            self._params[param_id] = msg.param_value
+            logger.info(f"Set param {param_id} to {msg.param_value}")
+            # Respond with the updated parameter value to confirm
+            self._send_param(param_id)
+
+    def _handle_param_request_read(self, msg):
+        # GCS is requesting a single parameter
+        param_id_bytes = msg.param_id.strip(b'\x00')
+        if param_id_bytes in self._params_bytes:
+            self._send_param(param_id_bytes.decode('utf-8'))
+        else:
+            # Parameter not found, send a PARAM_VALUE with param_index = -1
+            param_id = param_id_bytes.decode('utf-8')
+            self._connection.mav.param_value_send(
+                param_id_bytes,
+                0.0, # Value is typically 0 for non-existent params
+                mavutil.mavlink.MAV_PARAM_TYPE_REAL32,
+                len(self._params),
+                0xFFFF # param_index = -1 (0xFFFF) for non-existent parameter
+            )
+            logger.info(f"Responded to request for unknown param: {param_id}")
+
+    # --- Main Loops ---
+
     async def _receive_loop(self):
-        """Continuously polls for incoming MAVLink messages."""
+        """Continuously polls for and dispatches incoming MAVLink messages."""
         while not self._shutdown_event.is_set():
             try:
-                # Use non-blocking recv_match. Returns None immediately if no message.
                 msg = self._connection.recv_match(blocking=False)
-
-                if msg: # Only process if a message was actually received
-                    msg_type = msg.get_type()
-
-                    # If we receive a heartbeat from the GCS, forward it to the video manager
-                    if msg_type == 'HEARTBEAT' and msg.get_srcSystem() != self._config.MAVLINK_SOURCE_SYSTEM:
-                        await self._heartbeat_queue.put(msg)
-
-                    if msg_type == 'MANUAL_CONTROL':
-                        await self._manual_control_queue.put(msg)
-
-                    elif msg_type == 'COMMAND_LONG' and msg.command == mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN:
-                        logger.warning("Shutdown command received from GCS.")
-                        self._shutdown_event.set()
-
-                    # --- Handle Parameter Protocol ---
-                    elif msg_type == 'PARAM_REQUEST_LIST':
-                        # GCS has requested the full parameter list
-                        asyncio.create_task(self._send_all_params())
-
-                    elif msg_type == 'PARAM_SET':
-                        # GCS is setting a parameter value
-                        param_id_bytes = msg.param_id.strip(b'\x00')
-                        if param_id_bytes in self._params_bytes:
-                            param_id = param_id_bytes.decode('utf-8')
-                            self._params[param_id] = msg.param_value
-                            logger.info(f"Set param {param_id} to {msg.param_value}")
-                            # Respond with the updated parameter value to confirm
-                            self._send_param(param_id)
-
-                    elif msg_type == 'PARAM_REQUEST_READ':
-                        # GCS is requesting a single parameter
-                        param_id_bytes = msg.param_id.strip(b'\x00')
-                        if param_id_bytes in self._params_bytes:
-                            self._send_param(param_id_bytes.decode('utf-8'))
-
+                if msg:
+                    handler = self._message_handlers.get(msg.get_type())
+                    if handler:
+                        # Handle both sync and async handlers
+                        if asyncio.iscoroutinefunction(handler):
+                            await handler(msg)
+                        else:
+                            handler(msg)
+                
                 await asyncio.sleep(self._config.MAVLINK_RECV_LOOP_SLEEP)
             except Exception:
                 logger.exception("Error in MAVLink receive loop:")
@@ -99,8 +128,10 @@ class MAVLinkInterface:
                 if time.time() - last_heartbeat_time > 1.0:
                     self._connection.mav.heartbeat_send(
                         mavutil.mavlink.MAV_TYPE_GROUND_ROVER,
-                        mavutil.mavlink.MAV_AUTOPILOT_GENERIC,
-                        mavutil.mavlink.MAV_MODE_FLAG_MANUAL_INPUT_ENABLED, 0, 0)
+                        mavutil.mavlink.MAV_AUTOPILOT_ARDUPILOTMEGA,
+                        mavutil.mavlink.MAV_MODE_FLAG_MANUAL_INPUT_ENABLED,
+                        custom_mode=1, # ArduRover Manual Mode
+                        system_status=0)
                     last_heartbeat_time = time.time()
 
                 # Check for and process GPS data from the queue

@@ -38,3 +38,4 @@ LOG_LEVEL = "INFO" # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
 # -- Video Service Settings
 VIDEO_SERVICE_NAME = "crawler-video.service"
 GCS_HEARTBEAT_TIMEOUT = 5.0 # Seconds before GCS is considered disconnected
+DEBUG = True # Enable running the scripts on a generic machine with no external hardware. For debugging purposes.

@@ -41,14 +41,10 @@ class VideoStreamManager:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE)
 
-            stdout, stderr = await proc.communicate()
+            await proc.communicate()
 
             if proc.returncode != 0:
                 logger.error(f"Failed to {action} {self._service_name}.")
-                if stdout:
-                    logger.error(f"[stdout]\n{stdout.decode()}")
-                if stderr:
-                    logger.error(f"[stderr]\n{stderr.decode()}")
             else:
                 logger.info(f"Successfully executed '{action}' on {self._service_name}.")
 

@@ -21,13 +21,7 @@ class Crawler:
         """
         self._config = config
         self._manual_control_queue = manual_control_queue
-        self._arduino = ArduinoController(
-            port=config.ARDUINO_PORT,
-            steering_pin_num=config.STEERING_PIN,
-            throttle_pin_num=config.THROTTLE_PIN,
-            min_pulse=config.SERVO_MIN_PULSE,
-            max_pulse=config.SERVO_MAX_PULSE
-        )
+        self._arduino = ArduinoController(config)
         self._task = None
 
     async def run(self):
@@ -41,7 +35,7 @@ class Crawler:
                 msg = await self._manual_control_queue.get()
 
                 # msg.x = Throttle, msg.y = Steering. Values range from -1000 to 1000.
-                logger.info(f"RC -> {msg.to_json()}")
+                logger.debug(f"RC -> {msg.to_json()}")
 
                 self._arduino.set_steering(msg.r)
                 self._arduino.set_throttle(msg.z)
