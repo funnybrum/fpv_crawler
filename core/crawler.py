@@ -41,10 +41,10 @@ class Crawler:
                 msg = await self._manual_control_queue.get()
 
                 # msg.x = Throttle, msg.y = Steering. Values range from -1000 to 1000.
-                logger.debug(f"RC -> Steering: {msg.y:>5} | Throttle: {msg.x:>5} | BTN: {msg.buttons}")
+                logger.info(f"RC -> {msg.to_json()}")
 
-                self._arduino.set_steering(msg.y)
-                self._arduino.set_throttle(msg.x)
+                self._arduino.set_steering(msg.r)
+                self._arduino.set_throttle(msg.z)
 
             except asyncio.CancelledError:
                 logger.info("Crawler hardware controller stopping.")
