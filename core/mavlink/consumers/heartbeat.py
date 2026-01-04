@@ -41,6 +41,6 @@ class HeartbeatConsumer(MAVLinkConsumer):
             return
 
         # Check if the heartbeat is from the GCS, not from ourself
-        if msg.get_source_system() != config.MAVLINK_SOURCE_SYSTEM:
+        if msg.get_srcSystem() != config.MAVLINK_SOURCE_SYSTEM:
             logger.info("GCS heartbeat detected. Starting video stream.")
             await self._start_service()
