@@ -1,72 +1,84 @@
 """
-Main entry point and async orchestrator for the FPV Crawler application.
+Main entry point for the FPV Crawler application.
 """
 import asyncio
-import signal
 import logging
-from . import config
-from .crawler import Crawler
-from .mavlink import MAVLinkInterface
-from .gps import GPS
-from .video_manager import VideoStreamManager
+import signal
 
-# Setup logger
+from core import config
+from core.crawler import CrawlerController
+from core.mavlink.bus import MAVLinkEventBus
+from core.mavlink.consumers.heartbeat import HeartbeatConsumer
+from core.mavlink.consumers.manual_control import ManualControlConsumer
+from core.mavlink.consumers.parameters import ParameterConsumer
+from core.mavlink.consumers.system import SystemConsumer
+from core.mavlink.producers.heartbeat import HeartbeatProducer
+from core.mavlink.producers.gps import GpsProducer
+
 logger = logging.getLogger(__name__)
 
 
 async def main():
     """
-    Initializes, runs, and orchestrates the crawler's async components.
+    The main entry point of the crawler application.
+    Initializes and orchestrates all the different components.
     """
-    shutdown_event = asyncio.Event()
 
-    # --- Setup Signal Handlers ---
+    # --- Initialize Core Components & Bus ---
+    event_bus = MAVLinkEventBus()
+    hardware = CrawlerController()
+
+    # --- Create MAVLink Consumers (Subscribers) ---
+    system = SystemConsumer(event_bus)
+    manual_control = ManualControlConsumer(event_bus, hardware)
+    parameters = ParameterConsumer(event_bus)
+    heartbeat_consumer = HeartbeatConsumer(event_bus)
+
+    # --- Create MAVLink Producers ---
+    heartbeat_producer = HeartbeatProducer(event_bus)
+    gps_producer = GpsProducer(event_bus)
+
+    # --- Graceful Shutdown Setup ---
+    shutdown_event = event_bus.get_shutdown_event()
     loop = asyncio.get_running_loop()
 
-    def handle_shutdown_signal(sig):
-        logger.info(f"Received shutdown signal: {sig.name}")
+    def signal_handler():
+        logger.warning("Shutdown signal received.")
         shutdown_event.set()
 
     for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, handle_shutdown_signal, sig)
+        loop.add_signal_handler(sig, signal_handler)
 
-    # --- Create Queues and Components ---
-    manual_control_queue = asyncio.Queue()
-    gps_queue = asyncio.Queue()
-    heartbeat_queue = asyncio.Queue()
-
-    # Instantiate the components
-    video_manager = VideoStreamManager(config, heartbeat_queue)
-    mavlink_interface = MAVLinkInterface(config, manual_control_queue, gps_queue, shutdown_event, heartbeat_queue)
-    crawler = Crawler(config, manual_control_queue)
-    gps = GPS(config, gps_queue)
-
-    # --- Start and Monitor Components ---
-    logger.info("Starting all components...")
-    tasks = [
-        mavlink_interface.start(),
-        crawler.start(),
-        gps.start(),
-        video_manager.start()
+    # --- Start All Components ---
+    # Consumers and Producers are fully managed components with start() methods
+    components_to_start = [
+        event_bus,
+        heartbeat_producer, gps_producer,
+        system, manual_control, parameters, heartbeat_consumer
     ]
+    # Components that need to be explicitly closed
+    components_to_close = [event_bus, hardware]
 
-    # Wait until a shutdown signal is received
+    tasks = [comp.start() for comp in components_to_start]
+    logger.info("All components started.")
+
+    # --- Wait for Shutdown ---
     await shutdown_event.wait()
+    logger.info("Shutdown initiated. Cancelling all component tasks...")
 
-    logger.info("Shutdown initiated...")
-
-    # Gracefully cancel all running tasks
+    # --- Clean Up ---
     for task in tasks:
-        task.cancel()
-
-    # Wait for all tasks to acknowledge cancellation
+        if task:
+            task.cancel()
+    
+    # Allow tasks to process cancellation
     await asyncio.gather(*tasks, return_exceptions=True)
 
-    # Perform final cleanup
-    await video_manager.close()
-    crawler.close()
-    mavlink_interface.close()
-    logger.info("Application has shut down gracefully.")
+    for comp in components_to_close:
+        if hasattr(comp, 'close'):
+            comp.close()
+    
+    logger.info("Application shutdown complete.")
 
 
 if __name__ == "__main__":
