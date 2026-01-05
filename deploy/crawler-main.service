@@ -17,8 +17,8 @@ Restart=always
 RestartSec=5s
 
 # Logging configuration
-StandardOutput=append:%h/fpv_crawler/service-logs.log
-StandardError=append:%h/fpv_crawler/service-logs.log
+StandardOutput=append:%h/fpv_crawler/service.log
+StandardError=append:%h/fpv_crawler/service.log
 
 [Install]
 # This one DOES start on boot
