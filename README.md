@@ -26,6 +26,12 @@ Video stream config for QGC: UDP h.264 stream on port 5000. Aspect ratio 1.33333
 
 
 Progress:
-1) Both services are up and running
-2) Logs are working and the RC link is receiving the commands
-3) Crawler to QGC link also works - the crawler correctly reports its location
+1) Both services are up and running.
+2) Logs are working and the RC link is receiving the commands.
+3) Crawler to QGC link also works - the crawler correctly reports its location.
+4) Crawler servos are working.
+5) WireGuard link setup is automatically starting/stopping.
+6) 4G stream to QGC works. The low latency check should be unchecked.
+
+TODOs:
+1) Failsafe the servos to 1500

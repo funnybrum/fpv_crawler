@@ -14,6 +14,7 @@ from core.mavlink.consumers.parameters import ParameterConsumer
 from core.mavlink.consumers.system import SystemConsumer
 from core.mavlink.producers.heartbeat import HeartbeatProducer
 from core.mavlink.producers.gps import GpsProducer
+from core.network import NetworkManager
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ async def main():
     # --- Initialize Core Components & Bus ---
     event_bus = MAVLinkEventBus()
     hardware = CrawlerController()
+    network_manager = NetworkManager(event_bus)
 
     # --- Create MAVLink Consumers (Subscribers) ---
     system = SystemConsumer(event_bus)
@@ -54,7 +56,8 @@ async def main():
     components_to_start = [
         event_bus,
         heartbeat_producer, gps_producer,
-        system, manual_control, parameters, heartbeat_consumer
+        system, manual_control, parameters, heartbeat_consumer,
+        network_manager
     ]
     # Components that need to be explicitly closed
     components_to_close = [event_bus, hardware]

@@ -38,4 +38,10 @@ LOG_LEVEL = "INFO" # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
 # -- Video Service Settings
 VIDEO_SERVICE_NAME = "crawler-video.service"
 GCS_HEARTBEAT_TIMEOUT = 5.0 # Seconds before GCS is considered disconnected
-DEBUG = True # Enable running the scripts on a generic machine with no external hardware. For debugging purposes.
+
+
+# -- Network connectivity settings
+WIREGUARD_CONNECTION = "wg0"
+DONGLE_INTERFACE_ADDRESS = "192.168.8.100"
+HOME_NETWORK_INTERFACE_PREFIX = "192.168.1."
+CONNECTIVITY_CHECK_IP = "8.8.8.8"
