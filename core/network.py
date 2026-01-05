@@ -111,7 +111,7 @@ class NetworkManager:
             except asyncio.CancelledError:
                 break
 
-        await self._manage_wireguard(up=False)
+        # Don't close the WireGuard connection on exit. Keep the working connection state.
         logger.info("NetworkManager stopped.")
 
     def start(self):
