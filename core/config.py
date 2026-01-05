@@ -9,9 +9,17 @@ ARDUINO_PORT = "/dev/serial0"
 
 # -- Servo Settings
 STEERING_PIN = 5
+STEERING_MIN_PULSE = 1000  # in microseconds
+STEERING_MAX_PULSE = 2000  # in microseconds
+STEERING_FAILSAFE_PULSE = 1500  # in microseconds
+
 THROTTLE_PIN = 6
-SERVO_MIN_PULSE = 1000  # in microseconds
-SERVO_MAX_PULSE = 2000  # in microseconds
+THROTTLE_MIN_PULSE = 1000  # in microseconds
+THROTTLE_MAX_PULSE = 2000  # in microseconds
+THROTTLE_FAILSAFE_PULSE = 1500  # in microseconds
+
+FAILSAFE_INTERVAL = 2  # seconds
+FAILSAFE_LOOP_INTERVAL = 0.2  # seconds
 
 # -- MAVLink Settings
 GROUND_CONTROL_STATION_IP = os.getenv("CRAWLER_GCS_IP", "192.168.1.111")

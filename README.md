@@ -29,9 +29,6 @@ Progress:
 1) Both services are up and running.
 2) Logs are working and the RC link is receiving the commands.
 3) Crawler to QGC link also works - the crawler correctly reports its location.
-4) Crawler servos are working.
+4) Crawler servos are working. There is failsafe applied if there are no RC commands in the last 2 seconds.
 5) WireGuard link setup is automatically starting/stopping.
 6) 4G stream to QGC works. The low latency check should be unchecked.
-
-TODOs:
-1) Failsafe the servos to 1500

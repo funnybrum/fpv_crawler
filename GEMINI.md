@@ -14,3 +14,4 @@ Crawler 4G connectivity is not in the scope of this project. It uses Huawei e337
 Rules for Gemini CLI tool:
 1) Limit your work to the project folder here.
 2) Do not touch the git repo. I'll review the code and commit when needed.
+3) Always reload the files before processing a message in the chat. The code is being reviewed and updated in parallel.

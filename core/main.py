@@ -26,22 +26,22 @@ async def main():
     """
 
     # --- Initialize Core Components & Bus ---
-    event_bus = MAVLinkEventBus()
-    hardware = CrawlerController()
-    network_manager = NetworkManager(event_bus)
+    mavlink_event_bus = MAVLinkEventBus()
+    crawler_controller = CrawlerController()
+    network_manager = NetworkManager(mavlink_event_bus)
 
     # --- Create MAVLink Consumers (Subscribers) ---
-    system = SystemConsumer(event_bus)
-    manual_control = ManualControlConsumer(event_bus, hardware)
-    parameters = ParameterConsumer(event_bus)
-    heartbeat_consumer = HeartbeatConsumer(event_bus)
+    mavlink_system_consumer = SystemConsumer(mavlink_event_bus)
+    mavlink_manual_control = ManualControlConsumer(mavlink_event_bus, crawler_controller)
+    mavlink_parameter_consumer = ParameterConsumer(mavlink_event_bus)
+    mavlink_heartbeat_consumer = HeartbeatConsumer(mavlink_event_bus)
 
     # --- Create MAVLink Producers ---
-    heartbeat_producer = HeartbeatProducer(event_bus)
-    gps_producer = GpsProducer(event_bus)
+    mavlink_heartbeat_producer = HeartbeatProducer(mavlink_event_bus)
+    mavlink_gps_producer = GpsProducer(mavlink_event_bus)
 
     # --- Graceful Shutdown Setup ---
-    shutdown_event = event_bus.get_shutdown_event()
+    shutdown_event = mavlink_event_bus.get_shutdown_event()
     loop = asyncio.get_running_loop()
 
     def signal_handler():
@@ -54,13 +54,19 @@ async def main():
     # --- Start All Components ---
     # Consumers and Producers are fully managed components with start() methods
     components_to_start = [
-        event_bus,
-        heartbeat_producer, gps_producer,
-        system, manual_control, parameters, heartbeat_consumer,
-        network_manager
+        crawler_controller,
+        network_manager,
+        mavlink_event_bus,
+        mavlink_heartbeat_producer,
+        mavlink_gps_producer,
+        mavlink_system_consumer,
+        mavlink_manual_control,
+        mavlink_parameter_consumer,
+        mavlink_heartbeat_consumer,
     ]
+
     # Components that need to be explicitly closed
-    components_to_close = [event_bus, hardware]
+    components_to_close = [mavlink_event_bus, crawler_controller]
 
     tasks = [comp.start() for comp in components_to_start]
     logger.info("All components started.")
@@ -85,7 +91,6 @@ async def main():
 
 
 if __name__ == "__main__":
-    # Configure logging
     logging.basicConfig(
         level=getattr(logging, config.LOG_LEVEL),
         format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
