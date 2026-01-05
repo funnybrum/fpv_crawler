@@ -67,14 +67,14 @@ class MAVLinkEventBus:
                     if msg_type in self._subscribers:
                         for queue in self._subscribers[msg_type]:
                             await queue.put(msg)
-                
+
                 await asyncio.sleep(config.MAVLINK_RECV_LOOP_SLEEP)
             except asyncio.CancelledError:
                 break # Exit loop cleanly on cancellation
             except Exception:
                 logger.exception("Error in MAVLink event bus loop:")
                 await asyncio.sleep(config.ERROR_LOOP_SLEEP)
-        
+
         logger.info("MAVLink event bus stopped.")
 
     def start(self):

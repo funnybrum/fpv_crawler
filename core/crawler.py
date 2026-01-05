@@ -85,11 +85,11 @@ class CrawlerController:
 
             if not is_receiving_commands:
                 # Failsafe condition is met.
-                
+
                 # Only log the message when we first enter the failsafe state.
                 if self._last_command_time != 0:
                      logger.warning(f"Failsafe engaged: No command received for {config.FAILSAFE_INTERVAL}s or initial state.")
-                
+
                 # Apply failsafe and set the state to "failsafe active".
                 self._set_servos_failsafe()
                 self._last_command_time = 0

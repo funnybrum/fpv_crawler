@@ -79,14 +79,14 @@ async def main():
     for task in tasks:
         if task:
             task.cancel()
-    
+
     # Allow tasks to process cancellation
     await asyncio.gather(*tasks, return_exceptions=True)
 
     for comp in components_to_close:
         if hasattr(comp, 'close'):
             comp.close()
-    
+
     logger.info("Application shutdown complete.")
 
 

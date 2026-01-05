@@ -20,8 +20,8 @@ class MAVLinkConsumer(ABC):
         # The base class handles its own subscription
         for msg_type in msg_types:
             self._event_bus.subscribe(msg_type, self._internal_queue)
-        
-        logger.info(f"'{self.__class__.__name__}' subscribed to: {msg_types}")
+
+        logger.debug(f"'{self.__class__.__name__}' subscribed to: {msg_types}")
 
     @abstractmethod
     async def process_message(self, msg):
@@ -46,7 +46,7 @@ class MAVLinkConsumer(ABC):
                 break
             except Exception:
                 logger.exception(f"Error in {self.__class__.__name__} loop:")
-        
+
         logger.info(f"{self.__class__.__name__} stopped.")
 
     def start(self):

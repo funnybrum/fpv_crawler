@@ -110,7 +110,7 @@ class NetworkManager:
                 await asyncio.sleep(1)
             except asyncio.CancelledError:
                 break
-        
+
         await self._manage_wireguard(up=False)
         logger.info("NetworkManager stopped.")
 
