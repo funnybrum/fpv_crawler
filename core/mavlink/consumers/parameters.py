@@ -54,24 +54,23 @@ class ParameterConsumer(MAVLinkConsumer):
         """
         Processes an incoming MAVLink parameter-related message.
         """
-        match msg.get_type():
-            case 'PARAM_REQUEST_LIST':
-                asyncio.create_task(self._send_all_params())
-            case 'PARAM_SET':
-                param_id_bytes = msg.param_id.strip(b'\x00')
-                if param_id_bytes in self._params_bytes:
-                    param_id = param_id_bytes.decode('utf-8')
-                    self._params[param_id] = msg.param_value
-                    logger.info(f"Set param {param_id} to {msg.param_value}")
-                    self._send_param(param_id)
-            case 'PARAM_REQUEST_READ':
-                param_id_bytes = msg.param_id.strip(b'\x00')
-                if param_id_bytes in self._params_bytes:
-                    self._send_param(param_id_bytes.decode('utf-8'))
-                else:
-                    param_id = param_id_bytes.decode('utf-8')
-                    self._connection.mav.param_value_send(
-                        param_id_bytes, 0.0, mavutil.mavlink.MAV_PARAM_TYPE_REAL32,
-                        len(self._params), 0xFFFF
-                    )
-                    logger.info(f"Responded to request for unknown param: {param_id}")
+        if msg.get_type() == 'PARAM_REQUEST_LIST':
+            asyncio.create_task(self._send_all_params())
+        elif msg.get_type() == 'PARAM_SET':
+            param_id_bytes = msg.param_id.strip(b'\x00')
+            if param_id_bytes in self._params_bytes:
+                param_id = param_id_bytes.decode('utf-8')
+                self._params[param_id] = msg.param_value
+                logger.info(f"Set param {param_id} to {msg.param_value}")
+                self._send_param(param_id)
+        elif msg.get_type() ==  'PARAM_REQUEST_READ':
+            param_id_bytes = msg.param_id.strip(b'\x00')
+            if param_id_bytes in self._params_bytes:
+                self._send_param(param_id_bytes.decode('utf-8'))
+            else:
+                param_id = param_id_bytes.decode('utf-8')
+                self._connection.mav.param_value_send(
+                    param_id_bytes, 0.0, mavutil.mavlink.MAV_PARAM_TYPE_REAL32,
+                    len(self._params), 0xFFFF
+                )
+                logger.info(f"Responded to request for unknown param: {param_id}")
